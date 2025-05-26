@@ -1,0 +1,75 @@
+services:
+  django1:
+    image: intervue-django1:latest
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: django1
+    expose:
+      - "8000"
+    volumes:
+      - type: bind
+        source: ./backend
+        target: /app
+    networks:
+      - backend-network
+
+  django2: 
+    image: intervue-django2:latest
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: django2
+    expose:
+      - "8000"
+    volumes:
+      - type: bind
+        source: ./backend
+        target: /app
+    networks:
+      - backend-network
+     
+  react:
+    image: intervue-react:latest
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: react
+    expose:
+      - "80"
+    volumes:
+      - type: bind
+        source: ./frontend
+        target: /usr/src/app
+      - type: volume
+        source: node_modules
+        target: /usr/src/app/node_modules
+    networks:
+      - frontend-network
+    
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    volumes:
+      - type: bind
+        source: ./nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - django1
+      - django2
+      - react
+    networks:
+      - frontend-network
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
+  frontend-network:
+    driver: bridge
+
+volumes:
+  node_modules:
+    driver: local
