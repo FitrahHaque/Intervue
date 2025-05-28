@@ -2,9 +2,9 @@ terraform {
   cloud { 
     organization = "intervue" 
     workspaces { 
-      name = "app-database" 
-    } 
-  } 
+      name = "app-database"
+    }
+  }
   required_providers {
     aws = {
         source  = "hashicorp/aws"
@@ -18,12 +18,41 @@ provider "aws" {
 data "aws_vpc" "default_vpc" {
   default = true
 }
-
-data "aws_subnet_ids" "default_subnet" {
+# data "aws_subnets" "private" {
+#   filter {
+#     name = "vpc-id"
+#     values = [data.aws_vpc.default_vpc.id]
+#   }
+# }
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+resource "aws_subnet" "subnet_a" {
   vpc_id = data.aws_vpc.default_vpc.id
+  cidr_block = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 1)
+  availability_zone = data.aws_availability_zones.available.names[0]
+  tags = {
+    Name = "${var.project_name}-db-subnet-a"
+  }
+}
+resource "aws_subnet" "subnet_b" {
+  vpc_id = data.aws_vpc.default_vpc.id
+  cidr_block = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 2)
+  availability_zone = data.aws_availability_zones.available.names[1]
+  tags = {
+    Name = "${var.project_name}-db-subnet-b"
+  }
+}
+resource "aws_db_subnet_group" "postgres" {
+  name = "${var.project_name}-db-subnets"
+  subnet_ids = [
+    aws_subnet.subnet_a.id,
+    aws_subnet.subnet_b.id,
+  ]
 }
 resource "aws_security_group" "db" {
   name = "db-security-group"
+  vpc_id = data.aws_vpc.default_vpc.id
 }
 resource "aws_security_group_rule" "allow_http_inbound" {
   type              = "ingress"
@@ -42,7 +71,9 @@ resource "aws_db_instance" "postgres" {
     db_name                   = var.postgres_db_name
     username                  = var.postgres_username
     password                  = var.postgres_password
+    vpc_security_group_ids    = [aws_security_group.db.id]
     publicly_accessible       = true
-    skip_final_snapshot       = false
-    final_snapshot_identifier = "${var.project_name}-postgres-${var.postgres_db_name}-final-snapshot"
+    db_subnet_group_name      = aws_db_subnet_group.postgres.name
+    multi_az                  = true
+    skip_final_snapshot       = true
 }

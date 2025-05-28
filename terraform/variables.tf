@@ -8,7 +8,7 @@ variable "aws_region" {
 }
 variable "aws_security_group_db_name" {
     type = string
-    default = "${var.project_name}-db-sg"
+    default = "intervue-db-sg"
 }
 variable "postgres_instance_class" {
     type    = string
