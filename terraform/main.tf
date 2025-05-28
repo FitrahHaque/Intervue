@@ -18,12 +18,6 @@ provider "aws" {
 data "aws_vpc" "default_vpc" {
   default = true
 }
-# data "aws_subnets" "private" {
-#   filter {
-#     name = "vpc-id"
-#     values = [data.aws_vpc.default_vpc.id]
-#   }
-# }
 data "aws_availability_zones" "available" {
   state = "available"
 }
@@ -54,7 +48,7 @@ resource "aws_security_group" "db" {
   name   = "db-security-group"
   vpc_id = data.aws_vpc.default_vpc.id
 }
-resource "aws_security_group_rule" "allow_http_inbound" {
+resource "aws_security_group_rule" "allow_http_inbound_postgres" {
   type              = "ingress"
   security_group_id = aws_security_group.db.id
   from_port         = 5432
@@ -62,7 +56,6 @@ resource "aws_security_group_rule" "allow_http_inbound" {
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
 }
-# PostgreSQL (RDS)
 resource "aws_db_instance" "postgres" {
   identifier_prefix      = "${var.project_name}-postgres-"
   instance_class         = var.postgres_instance_class
@@ -76,4 +69,25 @@ resource "aws_db_instance" "postgres" {
   publicly_accessible    = true
   multi_az               = true
   skip_final_snapshot    = true
+}
+resource "aws_s3_bucket" "s3_bucket" {
+  bucket = "${var.project_name}-s3-bucket"
+  tags = {
+    Name        = "${var.project_name}-s3-bucket"
+    Environment = terraform.workspace
+  }
+}
+resource "aws_s3_bucket_versioning" "bucket_versioning" {
+  bucket = aws_s3_bucket.s3_bucket.id
+  versioning_configuration {
+    status = "Disabled"
+  }
+}
+resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_sse" {
+  bucket = aws_s3_bucket.s3_bucket.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+  }
 }
