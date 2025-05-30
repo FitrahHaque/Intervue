@@ -66,8 +66,8 @@ resource "aws_db_instance" "postgres" {
   password               = var.postgres_password
   vpc_security_group_ids = [aws_security_group.db.id]
   db_subnet_group_name   = aws_db_subnet_group.postgres.name
-  publicly_accessible    = true
-  multi_az               = true
+  publicly_accessible    = false
+  multi_az               = false
   skip_final_snapshot    = true
 }
 resource "aws_s3_bucket" "s3_bucket" {
