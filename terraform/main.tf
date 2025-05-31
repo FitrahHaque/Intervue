@@ -18,32 +18,32 @@ provider "aws" {
 data "aws_vpc" "default_vpc" {
   default = true
 }
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-resource "aws_subnet" "subnet_a" {
-  vpc_id            = data.aws_vpc.default_vpc.id
-  cidr_block        = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 1)
-  availability_zone = data.aws_availability_zones.available.names[0]
-  tags = {
-    Name = "${var.project_name}-db-subnet-a"
-  }
-}
-resource "aws_subnet" "subnet_b" {
-  vpc_id            = data.aws_vpc.default_vpc.id
-  cidr_block        = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 2)
-  availability_zone = data.aws_availability_zones.available.names[1]
-  tags = {
-    Name = "${var.project_name}-db-subnet-b"
-  }
-}
-resource "aws_db_subnet_group" "postgres" {
-  name = "${var.project_name}-db-subnets"
-  subnet_ids = [
-    aws_subnet.subnet_a.id,
-    aws_subnet.subnet_b.id,
-  ]
-}
+# data "aws_availability_zones" "available" {
+#   state = "available"
+# }
+# resource "aws_subnet" "subnet_a" {
+#   vpc_id            = data.aws_vpc.default_vpc.id
+#   cidr_block        = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 1)
+#   availability_zone = data.aws_availability_zones.available.names[0]
+#   tags = {
+#     Name = "${var.project_name}-db-subnet-a"
+#   }
+# }
+# resource "aws_subnet" "subnet_b" {
+#   vpc_id            = data.aws_vpc.default_vpc.id
+#   cidr_block        = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 8, 2)
+#   availability_zone = data.aws_availability_zones.available.names[1]
+#   tags = {
+#     Name = "${var.project_name}-db-subnet-b"
+#   }
+# }
+# resource "aws_db_subnet_group" "postgres" {
+#   name = "${var.project_name}-db-subnets"
+#   subnet_ids = [
+#     aws_subnet.subnet_a.id,
+#     aws_subnet.subnet_b.id,
+#   ]
+# }
 resource "aws_security_group" "db" {
   name   = "db-security-group"
   vpc_id = data.aws_vpc.default_vpc.id
@@ -65,9 +65,9 @@ resource "aws_db_instance" "postgres" {
   username               = var.postgres_username
   password               = var.postgres_password
   vpc_security_group_ids = [aws_security_group.db.id]
-  db_subnet_group_name   = aws_db_subnet_group.postgres.name
-  publicly_accessible    = false
-  multi_az               = false
+  # db_subnet_group_name   = aws_db_subnet_group.postgres.name
+  # publicly_accessible    = false
+  # multi_az               = false
   skip_final_snapshot    = true
 }
 resource "aws_s3_bucket" "s3_bucket" {
