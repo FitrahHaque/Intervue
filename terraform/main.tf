@@ -18,6 +18,10 @@ provider "aws" {
 data "aws_vpc" "default_vpc" {
   default = true
 }
+data "aws_iam_user" "dev_user" {
+  user_name = "intervue-admin"
+}
+data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket" "s3_bucket" {
   bucket = "${var.project_name}-s3-bucket"
   tags = {
@@ -76,21 +80,26 @@ resource "aws_security_group" "bastion_host" {
   description = "Allow SSH only from user IP"
   vpc_id      = data.aws_vpc.default_vpc.id
 }
-resource "aws_vpc_security_group_ingress_rule" "bastion_host" {
+# not needed anymore
+# resource "aws_vpc_security_group_ingress_rule" "bastion_host" {
+#   security_group_id = aws_security_group.bastion_host.id
+#   description       = "Allow SSH all users"
+#   from_port         = 22
+#   to_port           = 22
+#   ip_protocol       = "tcp"
+#   cidr_ipv4         = "0.0.0.0/0"
+# }
+resource "aws_vpc_security_group_egress_rule" "bastion_host" {
   security_group_id = aws_security_group.bastion_host.id
-  description       = "Allow SSH all users"
-  from_port         = 22
-  to_port           = 22
+  description       = "Allow outbound to SSM"
+  from_port         = 443
+  to_port           = 443
   ip_protocol       = "tcp"
   cidr_ipv4         = "0.0.0.0/0"
 }
-resource "aws_vpc_security_group_egress_rule" "bastion_host" {
-  security_group_id = aws_security_group.bastion_host.id
-  description       = "Allow all outbound"
-  from_port         = 0
-  to_port           = 0
-  ip_protocol       = "-1"
-  cidr_ipv4         = "0.0.0.0/0"
+resource "aws_iam_instance_profile" "ec2_ssm" {
+  name = "${var.project_name}-ssm"
+  role = 
 }
 resource "aws_security_group" "rds_psql" {
   name        = "${var.project_name}-psql"
@@ -143,8 +152,28 @@ resource "aws_db_instance" "postgres" {
   availability_zone      = var.subnet_a_az
   publicly_accessible    = false
   multi_az               = false
+  iam_database_authentication_enabled = true
 }
-
+resource "aws_iam_policy" "rds_connect" {
+  name = "${var.project_name}-rds-connect"
+  description = "Allow intervue-admin user to connect to RDS via IAM Authentication"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "AllowIAMDatabaseConnect"
+        Effect = "Allow"
+        Action = ["rds-db:connect"]
+        Resource = [
+          "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:db:${aws_db_instance.postgres.identifier}"
+        ]}
+    ]
+  })
+}
+resource "aws_iam_user_policy_attachment" "attach_rds_connect" {
+  user = data.aws_iam_user.dev_user.user_name
+  policy_arn = aws_iam_policy.rds_connect.arn
+}
 # resource "aws_security_group" "psql" {
 #   name   = "psql-security-group"
 #   vpc_id = data.aws_vpc.default_vpc.id

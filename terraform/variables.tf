@@ -50,8 +50,3 @@ variable "psql_sshkey" {
   type      = string
   sensitive = true
 }
-# variable "allowed_ssh_cidr" {
-#   description = "CIDR block from which user SSH into the EC2"
-#   type        = string
-#   default     = "99.243.58.89/32"
-# }
